@@ -1,7 +1,10 @@
 import asyncio
+import logging
 from datetime import datetime, timezone
 from app.workers.celery_app import celery_app
 from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -23,6 +26,7 @@ def run_scan(self, scan_id: str, scan_type: str, target: str, config: dict):
 
 async def _run_scan_async(task, scan_id: str, scan_type: str, target: str, config: dict):
     from sqlalchemy import select
+    from sqlalchemy.orm.attributes import flag_modified
     from app.core.database import AsyncSessionLocal
     from app.models.models import Scan, ScanStatus
     from app.scanners.github_scanner import GitHubScanner
@@ -40,21 +44,32 @@ async def _run_scan_async(task, scan_id: str, scan_type: str, target: str, confi
         await db.commit()
 
         try:
-            scanner_map = {
-                "github": GitHubScanner,
-                "kubernetes": KubernetesScanner,
-                "container": ContainerScanner,
-            }
+            if settings.DEMO_MODE:
+                from app.scanners.demo_results import get_demo_results
+                await asyncio.sleep(2)  # Simulate scan time
+                results = get_demo_results(scan_type, target)
+            else:
+                scanner_map = {
+                    "github": GitHubScanner,
+                    "kubernetes": KubernetesScanner,
+                    "container": ContainerScanner,
+                }
 
-            scanner_class = scanner_map.get(scan_type)
-            if not scanner_class:
-                raise ValueError(f"Unknown scan type: {scan_type}")
+                scanner_class = scanner_map.get(scan_type)
+                if not scanner_class:
+                    raise ValueError(f"Unknown scan type: {scan_type}")
 
-            scanner = scanner_class(target=target, config=config)
-            results = await scanner.run()
+                scanner = scanner_class(target=target, config=config)
+                results = await scanner.run()
+
+            logger.info(
+                "[scan %s] results ready: score=%s issues=%d",
+                scan_id, results.get("score"), len(results.get("issues", [])),
+            )
 
             scan.status = ScanStatus.COMPLETED
             scan.results = results
+            flag_modified(scan, "results")  # ensure SQLAlchemy marks JSON column dirty
             scan.score = results.get("score", 0)
             scan.issues_critical = results.get("summary", {}).get("critical", 0)
             scan.issues_warning = results.get("summary", {}).get("warning", 0)
@@ -62,8 +77,14 @@ async def _run_scan_async(task, scan_id: str, scan_type: str, target: str, confi
             scan.completed_at = datetime.now(timezone.utc)
             await db.commit()
 
-            # Trigger report generation
-            generate_report.delay(scan_id)
+            logger.info(
+                "[scan %s] committed: status=%s score=%s results_keys=%s",
+                scan_id, scan.status, scan.score,
+                list(scan.results.keys()) if scan.results else None,
+            )
+
+            if not settings.DEMO_MODE:
+                generate_report.delay(scan_id)
             return {"scan_id": scan_id, "status": "completed", "score": scan.score}
 
         except Exception as exc:

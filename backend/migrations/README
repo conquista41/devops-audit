@@ -1,0 +1,10 @@
+Database migrations for HealthCheck.dev (Alembic + asyncpg).
+
+Run via Docker:
+    docker compose exec api alembic upgrade head
+
+Create a new migration after model changes:
+    docker compose exec api alembic revision --autogenerate -m "describe change"
+
+Rollback one step:
+    docker compose exec api alembic downgrade -1

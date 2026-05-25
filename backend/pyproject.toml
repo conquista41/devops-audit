@@ -2,7 +2,7 @@
 name = "healthcheck-backend"
 version = "0.1.0"
 description = "HealthCheck.dev - DevOps Audit Tool"
-authors = ["Your Name <you@example.com>"]
+authors = ["conquista41 <m.canakci276@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"

@@ -25,6 +25,7 @@ class ScanResponse(BaseModel):
     issues_critical: int
     issues_warning: int
     issues_info: int
+    results: dict | None = None
     celery_task_id: str | None
     error_message: str | None
     created_at: str
@@ -70,6 +71,7 @@ async def create_scan(
         issues_critical=scan.issues_critical,
         issues_warning=scan.issues_warning,
         issues_info=scan.issues_info,
+        results=scan.results,
         celery_task_id=scan.celery_task_id,
         error_message=scan.error_message,
         created_at=scan.created_at.isoformat(),
@@ -131,6 +133,7 @@ async def get_scan(
         issues_critical=scan.issues_critical,
         issues_warning=scan.issues_warning,
         issues_info=scan.issues_info,
+        results=scan.results,
         celery_task_id=scan.celery_task_id,
         error_message=scan.error_message,
         created_at=scan.created_at.isoformat(),

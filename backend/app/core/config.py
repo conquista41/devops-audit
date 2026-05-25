@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     SECRET_KEY: str
     FRONTEND_URL: str = "http://localhost:3000"
+    DEMO_MODE: bool = False
 
     # Database
     DATABASE_URL: str  # postgresql+asyncpg://user:pass@host/db
@@ -20,9 +21,9 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/1"
 
-    # GitHub OAuth
-    GITHUB_CLIENT_ID: str
-    GITHUB_CLIENT_SECRET: str
+    # GitHub OAuth (required in production; unused when DEMO_MODE=true)
+    GITHUB_CLIENT_ID: str = ""
+    GITHUB_CLIENT_SECRET: str = ""
     GITHUB_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/github/callback"
 
     # AWS

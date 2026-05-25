@@ -42,7 +42,7 @@ class User(Base):
     full_name: Mapped[str | None] = mapped_column(String(255))
     avatar_url: Mapped[str | None] = mapped_column(String(500))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    plan: Mapped[PlanType] = mapped_column(SAEnum(PlanType), default=PlanType.FREE)
+    plan: Mapped[PlanType] = mapped_column(SAEnum(PlanType, values_callable=lambda x: [e.value for e in x]), default=PlanType.FREE)
     stripe_customer_id: Mapped[str | None] = mapped_column(String(100), unique=True)
     stripe_subscription_id: Mapped[str | None] = mapped_column(String(100))
     scans_used_this_month: Mapped[int] = mapped_column(Integer, default=0)
@@ -61,8 +61,8 @@ class Scan(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
-    scan_type: Mapped[ScanType] = mapped_column(SAEnum(ScanType))
-    status: Mapped[ScanStatus] = mapped_column(SAEnum(ScanStatus), default=ScanStatus.PENDING, index=True)
+    scan_type: Mapped[ScanType] = mapped_column(SAEnum(ScanType, values_callable=lambda x: [e.value for e in x]))
+    status: Mapped[ScanStatus] = mapped_column(SAEnum(ScanStatus, values_callable=lambda x: [e.value for e in x]), default=ScanStatus.PENDING, index=True)
     target: Mapped[str] = mapped_column(String(500))  # repo URL, kubeconfig path, etc.
     config: Mapped[dict] = mapped_column(JSON, default=dict)
     results: Mapped[dict | None] = mapped_column(JSON)

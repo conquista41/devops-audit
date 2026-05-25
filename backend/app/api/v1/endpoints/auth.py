@@ -6,7 +6,7 @@ from sqlalchemy import select
 from app.core.database import get_db
 from app.core.security import create_access_token, create_refresh_token, verify_token
 from app.core.config import get_settings
-from app.models.models import User
+from app.models.models import User, PlanType
 from app.services.github import get_github_oauth_url, exchange_code_for_token, get_github_user
 from pydantic import BaseModel
 
@@ -72,6 +72,30 @@ async def github_callback(code: str, state: str, db: AsyncSession = Depends(get_
     # Redirect to frontend with tokens
     return RedirectResponse(
         url=f"{settings.FRONTEND_URL}/auth/callback?access_token={jwt_token}&refresh_token={refresh}"
+    )
+
+
+@router.post("/demo", response_model=TokenResponse)
+async def demo_login(db: AsyncSession = Depends(get_db)):
+    if not settings.DEMO_MODE:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    result = await db.execute(select(User).where(User.email == "demo@healthcheck.dev"))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        user = User(
+            email="demo@healthcheck.dev",
+            github_username="demo-user",
+            full_name="Demo User",
+            plan=PlanType.FREE,
+        )
+        db.add(user)
+        await db.flush()
+
+    return TokenResponse(
+        access_token=create_access_token(str(user.id)),
+        refresh_token=create_refresh_token(str(user.id)),
     )
 
 
