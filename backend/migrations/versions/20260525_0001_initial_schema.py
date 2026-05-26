@@ -50,7 +50,7 @@ def upgrade() -> None:
         sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column(
             "scan_type",
-            sa.Enum("github", "kubernetes", "container", "cost", "full", name="scantype"),
+            sa.Enum("github", "kubernetes", "container", "devops", "cost", "full", name="scantype"),
             nullable=False,
         ),
         sa.Column(
@@ -101,6 +101,6 @@ def downgrade() -> None:
     op.drop_index("ix_users_email", table_name="users")
     op.drop_table("users")
 
-    sa.Enum(name="scantype").drop(op.get_bind(), checkfirst=False)
+    sa.Enum(name="scantype").drop(op.get_bind(), checkfirst=False)  # includes devops value
     sa.Enum(name="scanstatus").drop(op.get_bind(), checkfirst=False)
     sa.Enum(name="plantype").drop(op.get_bind(), checkfirst=False)

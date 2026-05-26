@@ -44,6 +44,7 @@ async def _run_scan_async(task, scan_id: str, scan_type: str, target: str, confi
     from app.scanners.github_scanner import GitHubScanner
     from app.scanners.k8s_scanner import KubernetesScanner
     from app.scanners.container_scanner import ContainerScanner
+    from app.scanners.devops_scanner import DevOpsScanner
 
     async with task_db_session() as db:
         result = await db.execute(select(Scan).where(Scan.id == scan_id))
@@ -65,6 +66,7 @@ async def _run_scan_async(task, scan_id: str, scan_type: str, target: str, confi
                     "github": GitHubScanner,
                     "kubernetes": KubernetesScanner,
                     "container": ContainerScanner,
+                    "devops": DevOpsScanner,
                 }
 
                 scanner_class = scanner_map.get(scan_type)

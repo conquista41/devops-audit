@@ -27,6 +27,7 @@ class ScanType(str, enum.Enum):
     GITHUB = "github"
     KUBERNETES = "kubernetes"
     CONTAINER = "container"
+    DEVOPS = "devops"
     COST = "cost"
     FULL = "full"
 

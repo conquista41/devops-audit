@@ -6,6 +6,7 @@ def get_demo_results(scan_type: str, target: str) -> dict:
         "github": _github_results,
         "kubernetes": _kubernetes_results,
         "container": _container_results,
+        "devops": _devops_results,
         "cost": _cost_results,
         "full": _full_results,
     }
@@ -214,13 +215,87 @@ def _cost_results(target: str) -> dict:
     }
 
 
+def _devops_results(target: str) -> dict:
+    return {
+        "score": 51,
+        "summary": {"critical": 3, "warning": 3, "info": 2},
+        "issues": [
+            {
+                "severity": "critical",
+                "title": "Terraform: Hardcoded AWS Access Key ID",
+                "description": "An AKIA* key was found hardcoded in infrastructure/main.tf.",
+                "file": "infrastructure/main.tf",
+                "line": 14,
+                "fix": "Rotate the key immediately, then use a `variable` with `sensitive = true` or an IAM role.",
+            },
+            {
+                "severity": "critical",
+                "title": "S3 bucket ACL is public",
+                "description": "`acl = \"public-read\"` on the reports bucket exposes all objects to the internet.",
+                "file": "infrastructure/s3.tf",
+                "line": 8,
+                "fix": "Remove the `acl` argument and enable S3 Block Public Access on the bucket.",
+            },
+            {
+                "severity": "critical",
+                "title": "Security group allows 0.0.0.0/0 ingress",
+                "description": "The API security group accepts inbound traffic from any IP on port 5432 (PostgreSQL).",
+                "file": "infrastructure/security_groups.tf",
+                "line": 22,
+                "fix": "Restrict `cidr_blocks` to the application tier's private CIDR range.",
+            },
+            {
+                "severity": "warning",
+                "title": "Service 'api' port 5432:5432 exposed to all interfaces",
+                "description": "Docker Compose binds the database port to 0.0.0.0, making it reachable from external networks.",
+                "file": "docker-compose.yml",
+                "line": 31,
+                "fix": "Bind to loopback only: `127.0.0.1:5432:5432`, or remove the host port entirely.",
+            },
+            {
+                "severity": "warning",
+                "title": "RDS instance missing storage_encrypted",
+                "description": "The production RDS instance does not set `storage_encrypted = true`.",
+                "file": "infrastructure/rds.tf",
+                "line": 5,
+                "fix": "Add `storage_encrypted = true` to the aws_db_instance resource.",
+            },
+            {
+                "severity": "warning",
+                "title": "Service 'worker' has no resource limits",
+                "description": "The Celery worker service in docker-compose.yml has no CPU or memory limits.",
+                "file": "docker-compose.yml",
+                "line": None,
+                "fix": "Add deploy.resources.limits.cpus and deploy.resources.limits.memory to the worker service.",
+            },
+            {
+                "severity": "info",
+                "title": "Resource 'api_bucket' (aws_s3_bucket) missing tags",
+                "description": "S3 bucket has no tags — difficult to track in cost reports.",
+                "file": "infrastructure/s3.tf",
+                "line": 3,
+                "fix": "Add tags: Name, Environment, and Project.",
+            },
+            {
+                "severity": "info",
+                "title": "Resource 'app_server' (aws_instance) missing tags",
+                "description": "EC2 instance has no tags — cannot be filtered in the AWS console by project.",
+                "file": "infrastructure/ec2.tf",
+                "line": 1,
+                "fix": "Add tags: Name, Environment, and Project.",
+            },
+        ],
+    }
+
+
 def _full_results(target: str) -> dict:
     gh = _github_results(target)
     k8s = _kubernetes_results(target)
     container = _container_results(target)
-    all_issues = gh["issues"] + k8s["issues"] + container["issues"]
+    devops = _devops_results(target)
+    all_issues = gh["issues"] + k8s["issues"] + container["issues"] + devops["issues"]
     return {
-        "score": int((gh["score"] + k8s["score"] + container["score"]) / 3),
+        "score": int((gh["score"] + k8s["score"] + container["score"] + devops["score"]) / 4),
         "summary": {
             "critical": sum(1 for i in all_issues if i["severity"] == "critical"),
             "warning": sum(1 for i in all_issues if i["severity"] == "warning"),
