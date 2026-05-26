@@ -1,4 +1,4 @@
-# HealthCheck.dev
+# DevOps Audit
 
 A SaaS DevOps audit tool that scans GitHub repositories, Kubernetes configs, and Dockerfiles for security issues and misconfigurations. Runs as a background job via Celery and returns a 0–100 health score with actionable findings.
 
@@ -25,8 +25,8 @@ Built as a full-stack portfolio project: FastAPI backend, async workers, React f
 Requires **Docker Desktop** (or Docker Engine + Compose v2). No other dependencies.
 
 ```bash
-git clone https://github.com/conquista41/healthcheck.git
-cd healthcheck
+git clone https://github.com/conquista41/devops-audit.git
+cd devops-audit
 bash demo_start.sh
 ```
 

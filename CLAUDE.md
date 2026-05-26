@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**HealthCheck.dev** — a SaaS DevOps audit tool that scans GitHub repos, Kubernetes configs, and Dockerfiles for security and best-practice issues.
+**DevOps Audit** — a SaaS DevOps audit tool that scans GitHub repos, Kubernetes configs, and Dockerfiles for security and best-practice issues.
 
 Monorepo layout:
 

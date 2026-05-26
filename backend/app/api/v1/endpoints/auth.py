@@ -80,12 +80,12 @@ async def demo_login(db: AsyncSession = Depends(get_db)):
     if not settings.DEMO_MODE:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
-    result = await db.execute(select(User).where(User.email == "demo@healthcheck.dev"))
+    result = await db.execute(select(User).where(User.email == "demo@devops-audit.dev"))
     user = result.scalar_one_or_none()
 
     if not user:
         user = User(
-            email="demo@healthcheck.dev",
+            email="demo@devops-audit.dev",
             github_username="demo-user",
             full_name="Demo User",
             plan=PlanType.FREE,

@@ -1,4 +1,4 @@
-Database migrations for HealthCheck.dev (Alembic + asyncpg).
+Database migrations for DevOps Audit (Alembic + asyncpg).
 
 Run via Docker:
     docker compose exec api alembic upgrade head

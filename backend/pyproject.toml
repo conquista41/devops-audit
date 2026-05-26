@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "healthcheck-backend"
+name = "devops-audit-backend"
 version = "0.1.0"
-description = "HealthCheck.dev - DevOps Audit Tool"
+description = "DevOps Audit - Security audit tool for GitHub repos, K8s configs, and Dockerfiles"
 authors = ["conquista41 <m.canakci276@gmail.com>"]
 
 [tool.poetry.dependencies]

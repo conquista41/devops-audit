@@ -48,7 +48,7 @@ export default function Home() {
       {/* Header */}
       <div className="absolute top-8 left-8 flex items-center gap-2">
         <div className="w-2 h-2 rounded-full bg-accent animate-pulse2" />
-        <span className="font-mono text-sm text-text-dim tracking-widest uppercase">HealthCheck.dev</span>
+        <span className="font-mono text-sm text-text-dim tracking-widest uppercase">DevOps Audit</span>
       </div>
 
       {/* Hero */}

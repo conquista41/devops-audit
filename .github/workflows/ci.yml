@@ -15,8 +15,8 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: healthcheck_test
-          POSTGRES_USER: healthcheck
+          POSTGRES_DB: devops_audit_test
+          POSTGRES_USER: devops_audit
           POSTGRES_PASSWORD: test
         options: >-
           --health-cmd pg_isready
@@ -57,7 +57,7 @@ jobs:
       - name: Run tests
         working-directory: backend
         env:
-          DATABASE_URL: postgresql+asyncpg://healthcheck:test@localhost:5432/healthcheck_test
+          DATABASE_URL: postgresql+asyncpg://devops_audit:test@localhost:5432/devops_audit_test
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: test-secret-key-for-ci
           GITHUB_CLIENT_ID: test
@@ -74,5 +74,5 @@ jobs:
         run: |
           docker build \
             -f infrastructure/docker/Dockerfile.backend \
-            -t healthcheck-backend:${{ github.sha }} \
+            -t devops-audit-backend:${{ github.sha }} \
             ./backend

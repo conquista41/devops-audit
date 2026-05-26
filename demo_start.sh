@@ -3,7 +3,7 @@
 # Requires Docker Desktop (or Docker Engine + Compose v2)
 set -euo pipefail
 
-echo "=== HealthCheck.dev — demo setup ==="
+echo "=== DevOps Audit — demo setup ==="
 echo ""
 
 # Copy demo .env if none exists

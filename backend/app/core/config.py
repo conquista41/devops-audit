@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     # App
-    APP_NAME: str = "HealthCheck.dev"
+    APP_NAME: str = "DevOps Audit"
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = False
     SECRET_KEY: str
@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     AWS_REGION: str = "us-east-1"
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
-    S3_BUCKET_REPORTS: str = "healthcheck-reports"
+    S3_BUCKET_REPORTS: str = "devops-audit-reports"
     SQS_QUEUE_URL: str = ""
 
     # Stripe
@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     STRIPE_PRICE_ID_MONTHLY: str = ""
 
     # Email
-    SES_FROM_EMAIL: str = "noreply@healthcheck.dev"
+    SES_FROM_EMAIL: str = "noreply@devops-audit.dev"
 
     # JWT
     JWT_ALGORITHM: str = "HS256"
