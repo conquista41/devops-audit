@@ -14,29 +14,12 @@ def get_demo_results(scan_type: str, target: str) -> dict:
 
 
 def _github_results(target: str) -> dict:
+    # Reflects actual repo state: permissions: contents: read is set,
+    # actions are pinned to SHAs, no pull_request_target trigger.
     return {
-        "score": 62,
-        "summary": {"critical": 2, "warning": 3, "info": 2},
+        "score": 84,
+        "summary": {"critical": 0, "warning": 1, "info": 2},
         "issues": [
-            {
-                "severity": "critical",
-                "title": "Dangerous trigger: pull_request_target",
-                "description": (
-                    f"`pull_request_target` in {target}/.github/workflows/ci.yml runs with "
-                    "write permissions even for fork PRs, enabling secret exfiltration."
-                ),
-                "file": ".github/workflows/ci.yml",
-                "line": 3,
-                "fix": "Replace `pull_request_target` with `pull_request` unless you need write permissions from a fork.",
-            },
-            {
-                "severity": "critical",
-                "title": "AWS Access Key ID exposed",
-                "description": "A hardcoded AWS_ACCESS_KEY_ID pattern was found in a workflow file.",
-                "file": ".github/workflows/deploy.yml",
-                "line": 47,
-                "fix": "Rotate the key in AWS IAM immediately and store it as ${{ secrets.AWS_ACCESS_KEY_ID }}.",
-            },
             {
                 "severity": "warning",
                 "title": "Main branch is unprotected",
@@ -44,22 +27,6 @@ def _github_results(target: str) -> dict:
                 "file": None,
                 "line": None,
                 "fix": "Enable branch protection: require at least 1 PR review and passing CI checks before merge.",
-            },
-            {
-                "severity": "warning",
-                "title": "Workflow permissions not explicitly set",
-                "description": "Workflows inherit default org-level permissions, which may be write-all.",
-                "file": ".github/workflows/ci.yml",
-                "line": 1,
-                "fix": "Add `permissions: read-all` at the workflow root, then grant specific write permissions per job.",
-            },
-            {
-                "severity": "warning",
-                "title": "Action not pinned to SHA: actions/checkout@v4",
-                "description": "Using a mutable tag means the action code can change between runs without notice.",
-                "file": ".github/workflows/ci.yml",
-                "line": 14,
-                "fix": "Pin to a full commit SHA: `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683`",
             },
             {
                 "severity": "info",
@@ -216,9 +183,11 @@ def _cost_results(target: str) -> dict:
 
 
 def _devops_results(target: str) -> dict:
+    # docker-compose issues removed: ports are now bound to 127.0.0.1
+    # and resource limits have been added to api and worker services.
     return {
-        "score": 51,
-        "summary": {"critical": 3, "warning": 3, "info": 2},
+        "score": 71,
+        "summary": {"critical": 3, "warning": 1, "info": 2},
         "issues": [
             {
                 "severity": "critical",
@@ -246,27 +215,11 @@ def _devops_results(target: str) -> dict:
             },
             {
                 "severity": "warning",
-                "title": "Service 'api' port 5432:5432 exposed to all interfaces",
-                "description": "Docker Compose binds the database port to 0.0.0.0, making it reachable from external networks.",
-                "file": "docker-compose.yml",
-                "line": 31,
-                "fix": "Bind to loopback only: `127.0.0.1:5432:5432`, or remove the host port entirely.",
-            },
-            {
-                "severity": "warning",
                 "title": "RDS instance missing storage_encrypted",
                 "description": "The production RDS instance does not set `storage_encrypted = true`.",
                 "file": "infrastructure/rds.tf",
                 "line": 5,
                 "fix": "Add `storage_encrypted = true` to the aws_db_instance resource.",
-            },
-            {
-                "severity": "warning",
-                "title": "Service 'worker' has no resource limits",
-                "description": "The Celery worker service in docker-compose.yml has no CPU or memory limits.",
-                "file": "docker-compose.yml",
-                "line": None,
-                "fix": "Add deploy.resources.limits.cpus and deploy.resources.limits.memory to the worker service.",
             },
             {
                 "severity": "info",
