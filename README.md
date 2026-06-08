@@ -49,7 +49,14 @@ docker compose logs -f
 
 ## Screenshots
 
-> _Coming soon — dashboard, scan detail, and PDF report views._
+![Landing page](screenshots/landing.png)
+*Hero page — one-click GitHub login or demo mode.*
+
+![Dashboard](screenshots/dashboard.png)
+*Dashboard — scan history, scores, and issue counts at a glance.*
+
+![Scan detail](screenshots/scan-detail.png)
+*Scan detail — per-file findings grouped by severity with inline fix suggestions.*
 
 ---
 

@@ -5,6 +5,7 @@ import { authApi } from "@/lib/api";
 export default function Home() {
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -23,17 +24,20 @@ export default function Home() {
 
   const handleDemo = async () => {
     setDemoLoading(true);
+    setError(null);
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/auth/demo`,
         { method: "POST" }
       );
-      if (!res.ok) throw new Error("Demo login failed");
+      if (res.status === 404) throw new Error("Demo mode is not enabled on this server.");
+      if (!res.ok) throw new Error("Demo login failed — is the API running?");
       const data = await res.json();
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("refresh_token", data.refresh_token);
       window.location.href = "/dashboard";
-    } catch {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
       setDemoLoading(false);
     }
   };
@@ -105,6 +109,12 @@ export default function Home() {
           ) : null}
           Try Demo →
         </button>
+
+        {error && (
+          <p className="mt-3 font-mono text-xs text-red-400 animate-fade-in">
+            ⚠ {error}
+          </p>
+        )}
       </div>
 
       {/* Feature grid */}

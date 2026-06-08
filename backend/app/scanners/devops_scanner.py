@@ -524,36 +524,131 @@ class DevOpsScanner:
         if not isinstance(pod_spec, dict):
             return
 
-        for container in pod_spec.get("containers") or []:
+        pod_sc = pod_spec.get("securityContext") or {}
+
+        for container in (pod_spec.get("containers") or []) + (pod_spec.get("initContainers") or []):
+            if not isinstance(container, dict):
+                continue
             cname = container.get("name", "?")
+            label = f"{kind}/{name} → {cname}"
             sc = container.get("securityContext") or {}
 
+            # Privileged
             if sc.get("privileged") is True:
                 self.result.add_issue(Issue(
                     severity="critical",
-                    title=f"Container '{cname}' in {kind} '{name}' is privileged",
-                    description="Privileged containers can escape to the host kernel.",
+                    title=f"Privileged container: {label}",
+                    description="Privileged containers bypass Kubernetes security mechanisms and gain host-level access.",
                     file=path,
-                    fix="Remove `privileged: true`. Use `capabilities.add` for specific kernel capabilities.",
+                    fix="Remove `privileged: true`. Use `capabilities.add` for specific kernel capabilities only.",
                 ))
 
-            if not sc.get("runAsNonRoot") and not sc.get("runAsUser"):
+            # Running as root
+            non_root = sc.get("runAsNonRoot") or pod_sc.get("runAsNonRoot")
+            uid = sc.get("runAsUser") if sc.get("runAsUser") is not None else pod_sc.get("runAsUser")
+            if not non_root and (uid is None or uid == 0):
                 self.result.add_issue(Issue(
-                    severity="warning",
-                    title=f"Container '{cname}' in {kind} '{name}' may run as root",
-                    description="No runAsNonRoot or runAsUser constraint; container defaults to UID 0.",
+                    severity="critical",
+                    title=f"Container may run as root: {label}",
+                    description="UID 0 inside a container increases the blast radius of a container escape.",
                     file=path,
-                    fix="Set `securityContext.runAsNonRoot: true` and `runAsUser: 1000`.",
+                    fix="Set `securityContext.runAsNonRoot: true` and `securityContext.runAsUser: 1000`.",
                 ))
 
-            if not (container.get("resources") or {}).get("limits"):
+            # Privilege escalation
+            if sc.get("allowPrivilegeEscalation") is not False:
                 self.result.add_issue(Issue(
                     severity="warning",
-                    title=f"Container '{cname}' in {kind} '{name}' has no resource limits",
-                    description="Unbounded containers can exhaust all node resources.",
+                    title=f"allowPrivilegeEscalation not disabled: {label}",
+                    description="Processes inside the container can gain more privileges than their parent.",
                     file=path,
-                    fix="Add `resources.limits.cpu` and `resources.limits.memory`.",
+                    fix="Set `securityContext.allowPrivilegeEscalation: false`.",
                 ))
+
+            # Writable root filesystem
+            if not sc.get("readOnlyRootFilesystem"):
+                self.result.add_issue(Issue(
+                    severity="warning",
+                    title=f"Writable root filesystem: {label}",
+                    description="A writable root filesystem lets attackers persist changes inside the container.",
+                    file=path,
+                    fix="Set `securityContext.readOnlyRootFilesystem: true` and use emptyDir volumes for writable paths.",
+                ))
+
+            # Resource limits
+            resources = container.get("resources") or {}
+            if not (resources.get("limits") or {}).get("cpu") or not (resources.get("limits") or {}).get("memory"):
+                self.result.add_issue(Issue(
+                    severity="warning",
+                    title=f"Missing resource limits: {label}",
+                    description="Without CPU/memory limits a single pod can starve other workloads on the node.",
+                    file=path,
+                    fix="Set `resources.limits.cpu` and `resources.limits.memory` on every container.",
+                ))
+
+            if not (resources.get("requests") or {}).get("cpu") or not (resources.get("requests") or {}).get("memory"):
+                self.result.add_issue(Issue(
+                    severity="info",
+                    title=f"Missing resource requests: {label}",
+                    description="Without resource requests the scheduler cannot make informed placement decisions.",
+                    file=path,
+                    fix="Set `resources.requests.cpu` and `resources.requests.memory`.",
+                ))
+
+            # Image tag
+            image = container.get("image") or ""
+            if image and (":" not in image or image.endswith(":latest")):
+                self.result.add_issue(Issue(
+                    severity="warning",
+                    title=f"Image using mutable tag: {label}",
+                    description=f"`{image}` uses a mutable or missing tag — silent upstream changes can break deployments.",
+                    file=path,
+                    fix="Pin to a digest: `image: myapp@sha256:<digest>`",
+                ))
+
+            # Liveness / readiness probes (skip Jobs/CronJobs)
+            if kind not in ("Job", "CronJob"):
+                if not container.get("livenessProbe"):
+                    self.result.add_issue(Issue(
+                        severity="warning",
+                        title=f"No livenessProbe: {label}",
+                        description="Without a liveness probe Kubernetes cannot automatically restart stuck containers.",
+                        file=path,
+                        fix="Add a `livenessProbe` (httpGet, tcpSocket, or exec) to the container spec.",
+                    ))
+                if not container.get("readinessProbe"):
+                    self.result.add_issue(Issue(
+                        severity="info",
+                        title=f"No readinessProbe: {label}",
+                        description="Without a readiness probe, traffic is sent to containers before they are ready.",
+                        file=path,
+                        fix="Add a `readinessProbe` to the container spec.",
+                    ))
+
+        # Sensitive hostPath mounts
+        _SENSITIVE_PATHS = {"/", "/etc", "/proc", "/sys", "/var/run/docker.sock"}
+        for vol in pod_spec.get("volumes") or []:
+            if not isinstance(vol, dict):
+                continue
+            hp = (vol.get("hostPath") or {}).get("path", "")
+            if hp in _SENSITIVE_PATHS:
+                self.result.add_issue(Issue(
+                    severity="critical",
+                    title=f"Sensitive hostPath mount in {kind}/{name}: {hp}",
+                    description=f"Mounting `{hp}` from the host can allow container escape or privilege escalation.",
+                    file=path,
+                    fix="Avoid mounting sensitive host paths. Use PersistentVolumeClaims instead.",
+                ))
+
+        # Automounted service account token
+        if pod_spec.get("automountServiceAccountToken") is not False:
+            self.result.add_issue(Issue(
+                severity="info",
+                title=f"Service account token auto-mounted: {kind}/{name}",
+                description="Auto-mounted tokens can be exploited if the pod is compromised.",
+                file=path,
+                fix="Set `automountServiceAccountToken: false` unless the pod calls the Kubernetes API.",
+            ))
 
 
 # ── Module-level helper ────────────────────────────────────────────────────────
