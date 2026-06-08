@@ -1,4 +1,6 @@
-FROM python:3.11-slim
+# Pin to a specific digest for reproducible builds.
+# To refresh: docker pull python:3.11-slim && docker inspect python:3.11-slim --format='{{index .RepoDigests 0}}'
+FROM python:3.11-slim@sha256:ad48727987b259a253f6e906a1d5d0e87632f75c39d26f832b0a5f93c8f5fd08
 
 WORKDIR /app
 
@@ -21,4 +23,6 @@ RUN addgroup --system app && adduser --system --group app
 USER app
 
 EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

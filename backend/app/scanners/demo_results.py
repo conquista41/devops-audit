@@ -49,85 +49,43 @@ def _github_results(target: str) -> dict:
 
 
 def _kubernetes_results(target: str) -> dict:
+    # Reflects k8s/ manifests: all three Deployments set runAsNonRoot,
+    # resource limits/requests, liveness+readiness probes, and
+    # automountServiceAccountToken: false.
+    # Remaining: images reference ':latest' tags — needs digest pinning.
     return {
-        "score": 47,
-        "summary": {"critical": 1, "warning": 2, "info": 1},
+        "score": 87,
+        "summary": {"critical": 0, "warning": 1, "info": 0},
         "issues": [
-            {
-                "severity": "critical",
-                "title": "Containers running as root",
-                "description": (
-                    "3 Deployments do not set securityContext.runAsNonRoot, "
-                    "defaulting to root (UID 0) inside the container."
-                ),
-                "file": "deployments/api.yaml",
-                "line": 28,
-                "fix": "Set securityContext.runAsNonRoot: true and securityContext.runAsUser: 1000 on each container.",
-            },
-            {
-                "severity": "warning",
-                "title": "Resource limits not set on containers",
-                "description": "5 containers have no CPU or memory limits. A runaway pod can exhaust the entire node.",
-                "file": "deployments/worker.yaml",
-                "line": 19,
-                "fix": "Add resources.limits.cpu and resources.limits.memory to every container spec.",
-            },
             {
                 "severity": "warning",
                 "title": "Images using 'latest' tag",
-                "description": "2 Deployments reference images tagged ':latest', making rollbacks unreliable.",
-                "file": "deployments/api.yaml",
+                "description": "All 3 Deployments reference images tagged ':latest', making rollbacks unreliable.",
+                "file": "k8s/api.yaml",
                 "line": 22,
-                "fix": "Pin images to an immutable digest: `image: myapp@sha256:<digest>`",
-            },
-            {
-                "severity": "info",
-                "title": "Liveness/readiness probes not configured",
-                "description": "4 containers have no probes. Kubernetes cannot auto-restart unhealthy pods.",
-                "file": "deployments/frontend.yaml",
-                "line": 15,
-                "fix": "Add livenessProbe and readinessProbe to each container.",
+                "fix": "Pin images to an immutable digest: `image: ghcr.io/conquista41/devops-audit-backend@sha256:<digest>`",
             },
         ],
     }
 
 
 def _container_results(target: str) -> dict:
+    # Reflects infrastructure/docker/Dockerfile.backend:
+    # - USER app is set (non-root) ✓
+    # - COPY used throughout ✓
+    # - Base image pinned to SHA256 digest ✓
+    # - HEALTHCHECK added ✓
     return {
-        "score": 55,
-        "summary": {"critical": 1, "warning": 1, "info": 2},
+        "score": 97,
+        "summary": {"critical": 0, "warning": 0, "info": 1},
         "issues": [
             {
-                "severity": "critical",
-                "title": "Dockerfile does not set a non-root USER",
-                "description": "The final stage has no USER instruction; the process runs as root (UID 0).",
-                "file": "Dockerfile",
-                "line": None,
-                "fix": "Add `RUN useradd -r appuser && USER appuser` before the CMD/ENTRYPOINT.",
-            },
-            {
-                "severity": "warning",
-                "title": "Base image not pinned to a specific tag",
-                "description": "`FROM python:3.11` resolves to the latest patch. Different CI runs may pull different images.",
-                "file": "Dockerfile",
-                "line": 1,
-                "fix": "Pin to a digest: `FROM python:3.11-slim@sha256:<digest>` for reproducible builds.",
-            },
-            {
                 "severity": "info",
-                "title": "Use COPY instead of ADD",
-                "description": "ADD has implicit tar-extraction and URL-fetch behaviors. COPY is more predictable.",
-                "file": "Dockerfile",
-                "line": 9,
-                "fix": "Replace `ADD . /app` with `COPY . /app` unless you specifically need ADD's extra capabilities.",
-            },
-            {
-                "severity": "info",
-                "title": "No HEALTHCHECK instruction",
-                "description": "Without HEALTHCHECK, Docker and orchestrators cannot detect a stuck container.",
-                "file": "Dockerfile",
-                "line": None,
-                "fix": "Add `HEALTHCHECK CMD curl -f http://localhost:8000/health || exit 1` before CMD.",
+                "title": "Consider multi-stage build to reduce image size",
+                "description": "The backend image installs build-essential and other compile-time tools that are not needed at runtime, increasing the final image size.",
+                "file": "infrastructure/docker/Dockerfile.backend",
+                "line": 5,
+                "fix": "Use a multi-stage build: compile/install in a `builder` stage, then COPY only the installed packages into a clean `python:3.11-slim` final stage.",
             },
         ],
     }
